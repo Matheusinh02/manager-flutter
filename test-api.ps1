@@ -1,84 +1,73 @@
-# Script PowerShell para testar API REST Serverless
+# Script de Teste da API Serverless
+# ====================================
 
-Write-Host "🧪 Testando API REST Serverless..." -ForegroundColor Cyan
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+$API_URL = "http://localhost:4566/restapis/rd4yvcwjkt/local/_user_request_"
+
+Write-Host ""
+Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host "  Testando API Serverless LocalStack" -ForegroundColor Cyan
+Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
 
-Start-Sleep -Seconds 2
+# Teste 1: CREATE Item
+Write-Host "[1/5] Criando novo item..." -ForegroundColor Yellow
+$createResponse = Invoke-RestMethod -Uri "$API_URL/items" -Method POST -Body (@{
+    title = "Tarefa de Teste"
+    description = "Criada via script de teste"
+} | ConvertTo-Json) -ContentType "application/json"
 
-# Descobrir o API Gateway ID
-Write-Host "🔍 Descobrindo API Gateway ID..." -ForegroundColor Yellow
-$apiInfo = aws --endpoint-url=http://localhost:4566 apigateway get-rest-apis | ConvertFrom-Json
-$apiId = $apiInfo.items[0].id
-
-if (-not $apiId) {
-    Write-Host "❌ API Gateway não encontrado" -ForegroundColor Red
-    Write-Host "Execute primeiro: npm run deploy" -ForegroundColor Yellow
-    exit 1
-}
-
-Write-Host "✅ API ID: $apiId" -ForegroundColor Green
-$baseUrl = "http://localhost:4566/restapis/$apiId/local/_user_request_"
-Write-Host "📍 Base URL: $baseUrl" -ForegroundColor Cyan
-Write-Host ""
-
-# Teste 1: CREATE
-Write-Host "1️⃣ TEST: CREATE Item" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-$createBody = @{
-    title = "Comprar leite"
-    description = "Ir ao mercado comprar leite integral"
-    priority = "high"
-} | ConvertTo-Json
-
-$createResponse = Invoke-RestMethod -Uri "$baseUrl/items" -Method Post -Body $createBody -ContentType "application/json"
+Write-Host "[OK] Item criado com sucesso!" -ForegroundColor Green
 $itemId = $createResponse.item.id
-Write-Host "✅ Item criado: $itemId" -ForegroundColor Green
-Write-Host "📢 Verifique os logs do subscriber para ver a notificação SNS" -ForegroundColor Cyan
+Write-Host "ID: $itemId" -ForegroundColor Gray
 Write-Host ""
+
 Start-Sleep -Seconds 2
 
-# Teste 2: LIST
-Write-Host "2️⃣ TEST: LIST Items" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-$listResponse = Invoke-RestMethod -Uri "$baseUrl/items" -Method Get
-$listResponse | ConvertTo-Json -Depth 10
+# Teste 2: LIST Items
+Write-Host "[2/5] Listando todos os itens..." -ForegroundColor Yellow
+$listResponse = Invoke-RestMethod -Uri "$API_URL/items" -Method GET
+Write-Host "[OK] Total de itens: $($listResponse.items.Count)" -ForegroundColor Green
 Write-Host ""
+
 Start-Sleep -Seconds 2
 
-# Teste 3: GET ONE
-Write-Host "3️⃣ TEST: GET Item por ID" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-$getResponse = Invoke-RestMethod -Uri "$baseUrl/items/$itemId" -Method Get
-$getResponse | ConvertTo-Json -Depth 10
+# Teste 3: GET Item
+Write-Host "[3/5] Buscando item especifico..." -ForegroundColor Yellow
+$getResponse = Invoke-RestMethod -Uri "$API_URL/items/$itemId" -Method GET
+Write-Host "[OK] Item encontrado: $($getResponse.item.title)" -ForegroundColor Green
 Write-Host ""
+
 Start-Sleep -Seconds 2
 
-# Teste 4: UPDATE
-Write-Host "4️⃣ TEST: UPDATE Item" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-$updateBody = @{
-    title = "Comprar leite e pão"
+# Teste 4: UPDATE Item
+Write-Host "[4/5] Atualizando item..." -ForegroundColor Yellow
+$updateResponse = Invoke-RestMethod -Uri "$API_URL/items/$itemId" -Method PUT -Body (@{
+    title = "Tarefa Atualizada"
+    description = "Modificada via script"
     completed = $true
-} | ConvertTo-Json
+} | ConvertTo-Json) -ContentType "application/json"
 
-$updateResponse = Invoke-RestMethod -Uri "$baseUrl/items/$itemId" -Method Put -Body $updateBody -ContentType "application/json"
-$updateResponse | ConvertTo-Json -Depth 10
-Write-Host "📢 Verifique os logs do subscriber para ver a notificação SNS" -ForegroundColor Cyan
+Write-Host "[OK] Item atualizado com sucesso!" -ForegroundColor Green
 Write-Host ""
+
 Start-Sleep -Seconds 2
 
-# Teste 5: DELETE
-Write-Host "5️⃣ TEST: DELETE Item" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-$deleteResponse = Invoke-RestMethod -Uri "$baseUrl/items/$itemId" -Method Delete
-$deleteResponse | ConvertTo-Json -Depth 10
+# Teste 5: DELETE Item
+Write-Host "[5/5] Deletando item..." -ForegroundColor Yellow
+$deleteResponse = Invoke-RestMethod -Uri "$API_URL/items/$itemId" -Method DELETE
+Write-Host "[OK] Item deletado com sucesso!" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Write-Host "✅ Todos os testes concluídos!" -ForegroundColor Green
+# Verificar logs SNS
+Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host "  Logs SNS Subscriber (ultimas 10)" -ForegroundColor Cyan
+Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "💡 Comandos úteis:" -ForegroundColor Cyan
-Write-Host "  - Ver logs SNS subscriber: docker logs localstack | Select-String '📬'"
-Write-Host "  - Ver tabela DynamoDB: aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name task-manager-serverless-items-local"
-Write-Host "  - Ver tópicos SNS: aws --endpoint-url=http://localhost:4566 sns list-topics"
+
+docker logs localstack | Select-String 'SNS' -Context 0,1 | Select-Object -Last 10
+
+Write-Host ""
+Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host "  Testes concluidos com sucesso!" -ForegroundColor Cyan
+Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host ""
